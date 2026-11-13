@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Relacionamento Comercial — Análise de Tickets</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --c1:#327746;--c2:#4AA455;--c3:#95C11F;--c4:#BFCF52;--c5:#E7E365;
+  --ca:#E69732;--cb:#703987;--cr:#C0392B;
+  --bg:#F4F6F8;--white:#FFFFFF;--gray:#6B7280;--gray2:#E5E7EB;--dark:#1F2937;
+  --sidebar:220px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--dark);overflow-x:hidden}
+#app{display:flex;min-height:100vh}
+#sidebar{width:var(--sidebar);background:var(--c1);position:fixed;top:0;left:0;height:100vh;display:flex;flex-direction:column;z-index:100;overflow-y:auto}
+#main{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column}
+.sb-brand{padding:18px 14px;border-bottom:1px solid rgba(255,255,255,.15);text-align:center;color:#fff}
+.sb-brand .logo-text{font-size:24px;font-weight:900;letter-spacing:-0.5px;color:#fff;display:block;margin-bottom:4px}
+.sb-brand .dtitle{font-size:11px;font-weight:700;line-height:1.3;opacity:0.9}
+.sb-brand .creator{color:rgba(255,255,255,.6);font-size:9px;margin-top:2px}
+.sb-nav{flex:1;padding:6px 0}
+.sb-nav button{width:100%;background:none;border:none;color:rgba(255,255,255,.8);padding:10px 14px;text-align:left;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;transition:background .15s}
+.sb-nav button:hover{background:rgba(255,255,255,.1)}
+.sb-nav button.active{background:rgba(255,255,255,.18);color:#fff;font-weight:700;border-left:3px solid var(--c5)}
+.sb-divider{border:none;border-top:1px solid rgba(255,255,255,.15);margin:6px 10px}
+.sb-action{padding:6px 0 14px}
+.sb-action button{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:8px 14px;text-align:left;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:7px;transition:background .15s;margin-bottom:3px}
+.sb-action button:hover{background:rgba(255,255,255,.2)}
+#header{background:var(--white);border-bottom:1px solid var(--gray2);padding:10px 18px;position:sticky;top:0;z-index:90;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.filter-row{display:flex;flex-wrap:wrap;gap:7px;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fg label{font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.fg select{border:1px solid var(--gray2);border-radius:5px;padding:5px 7px;font-size:12px;color:var(--dark);background:#fff;cursor:pointer;min-width:105px}
+.btn-clear{background:none;border:1px solid var(--gray2);border-radius:5px;padding:5px 11px;font-size:12px;color:var(--gray);cursor:pointer;align-self:flex-end}
+.btn-clear:hover{background:var(--gray2)}
+#content{flex:1;padding:18px;overflow-y:auto}
+.screen{display:none}.screen.active{display:block}
+.kpi-row{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:16px}
+.kpi{background:var(--c1);color:#fff;border-radius:8px;padding:9px 8px;display:flex;flex-direction:column;gap:2px}
+.kpi.neutral{background:var(--dark)}
+.kpi.alert{background:var(--cr)}
+.kpi-lbl{font-size:9px;font-weight:700;opacity:.85;text-transform:uppercase;letter-spacing:.2px}
+.kpi-val{font-size:20px;font-weight:700;line-height:1.1}
+.kpi-sub{font-size:10px;opacity:.75}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.g13{display:grid;grid-template-columns:1.15fr 1fr;gap:14px;margin-bottom:14px}
+.g31{display:grid;grid-template-columns:1fr 1.4fr;gap:14px;margin-bottom:14px}
+.card{background:var(--white);border-radius:9px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card-title{font-size:12.5px;font-weight:700;color:var(--dark);margin-bottom:10px;border-bottom:2px solid var(--c3);padding-bottom:5px}
+.card-sub{font-size:10.5px;color:var(--gray);margin-bottom:7px;font-style:italic}
+.cw{position:relative;width:100%}
+.cw canvas{max-height:220px;cursor:pointer}
+.cw-lg canvas{max-height:280px;cursor:pointer}
+.tw{overflow:auto;max-height:360px;border-radius:5px;border:1px solid var(--gray2)}
+.tw-full{overflow:auto;max-height:calc(100vh - 290px);border-radius:5px;border:1px solid var(--gray2)}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+thead th{background:var(--c1);color:#fff;padding:7px 9px;text-align:left;position:sticky;top:0;font-size:11px;white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--gray2)}
+tbody tr:hover{background:#F9FAFB}
+tbody td{padding:6px 9px;white-space:nowrap}
+.dga{color:var(--c1);font-weight:700}
+.sr{display:flex;gap:7px;margin-bottom:9px;align-items:center}
+.sr input{flex:1;border:1px solid var(--gray2);border-radius:5px;padding:5px 9px;font-size:12px}
+.btn-exp{background:var(--c1);color:#fff;border:none;border-radius:5px;padding:5px 13px;font-size:12px;cursor:pointer;font-weight:600}
+.pag{display:flex;align-items:center;gap:5px;padding:8px 0;justify-content:flex-end}
+.pag button{border:1px solid var(--gray2);background:#fff;border-radius:4px;padding:3px 9px;font-size:11.5px;cursor:pointer}
+.pag button:disabled{opacity:.4;cursor:default}
+.pag-info{font-size:11px;color:var(--gray)}
+.ag-info{font-size:11px;color:var(--c1);font-weight:700;margin-bottom:5px;min-height:15px}
+.loading{position:fixed;inset:0;background:rgba(255,255,255,.97);z-index:500;display:flex;align-items:center;justify-content:center}
+.spinner{width:40px;height:40px;border:4px solid var(--gray2);border-top-color:var(--c1);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ms-wrap{position:relative;display:inline-block}
+.ms-btn{border:1px solid var(--gray2);border-radius:5px;padding:5px 28px 5px 8px;font-size:12px;color:var(--dark);background:#fff;cursor:pointer;min-width:75px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;position:relative}
+.ms-btn::after{content:'▾';position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--gray)}
+.ms-btn.active{border-color:var(--c2);outline:2px solid var(--c2)}
+.ms-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid var(--gray2);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:200;min-width:150px;max-height:240px;overflow-y:auto;padding:4px 0}
+.ms-dropdown.open{display:block}
+.ms-item{display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;color:var(--dark)}
+.ms-item:hover{background:#F0FDF4}
+.ms-item input[type=checkbox]{accent-color:var(--c1);width:13px;height:13px;cursor:pointer}
+.ms-item label{cursor:pointer;flex:1}
+.ms-divider{border:none;border-top:1px solid var(--gray2);margin:4px 0}
+.ms-select-all{font-weight:700;color:var(--c1)}
+.upload-screen{background:#fff;border-radius:14px;box-shadow:0 4px 32px rgba(0,0,0,.12);padding:36px 40px;max-width:540px;width:94%;display:flex;flex-direction:column}
+.us-header{text-align:center;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--gray2)}
+.us-header .logo-text{font-size:32px;font-weight:900;letter-spacing:-0.5px;color:var(--c1);display:block;margin-bottom:6px}
+.us-title{font-size:17px;font-weight:700;color:var(--c1)}
+.us-sub{font-size:11px;color:var(--gray);margin-top:3px}
+.us-body{display:flex;flex-direction:column;gap:16px}
+.us-instrucao{font-size:13px;color:var(--gray);text-align:center;line-height:1.6}
+.us-file-card{display:flex;align-items:center;gap:14px;border:1.5px solid var(--gray2);border-radius:10px;padding:16px}
+.us-file-card.ok{border-color:var(--c2);background:#f0fdf4}
+.us-file-card.erro{border-color:var(--cr);background:#fff5f5}
+.us-file-icon{color:var(--c1);flex-shrink:0}
+.us-file-info{flex:1;display:flex;flex-direction:column;gap:3px}
+.us-file-label{font-size:13px;font-weight:700;color:var(--dark)}
+.us-file-desc{font-size:11px;color:var(--gray)}
+.us-file-status{font-size:11.5px;color:var(--gray);margin-top:2px}
+.us-file-card.ok .us-file-status{color:var(--c1);font-weight:600}
+.us-file-btn{background:var(--c1);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;font-weight:600}
+.us-btn-iniciar{background:var(--c1);color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px}
+.us-btn-iniciar:disabled{background:var(--gray2);color:var(--gray);cursor:not-allowed}
+</style>
+</head>
+<body>
+
+<div class="loading" id="screenUpload">
+  <div class="upload-screen">
+    <div class="us-header">
+      <span class="logo-text">MedSênior</span>
+      <div class="us-title">Dashboard Relacionamento Comercial</div>
+      <div class="us-sub">Análise de Tickets — MedSênior</div>
+    </div>
+    <div class="us-body">
+      <p class="us-instrucao">Para iniciar, selecione a base de tickets em ficheiro CSV.</p>
+      <div class="us-file-card" id="cardTickets">
+        <div class="us-file-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+        </div>
+        <div class="us-file-info">
+          <div class="us-file-label">Base de Tickets</div>
+          <div class="us-file-desc">Ficheiro CSV principal de atendimento</div>
+          <div class="us-file-status" id="stTickets">⬜ A aguardar seleção</div>
+        </div>
+        <label class="us-file-btn" for="inpTickets">Selecionar ficheiro</label>
+        <input type="file" id="inpTickets" accept=".csv" onchange="validarTickets(event)" style="display:none">
+      </div>
+      <button class="us-btn-iniciar" id="btnIniciar" onclick="iniciarDashboard()" disabled>
+        Carregar dashboard
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="loading" id="screenLoading" style="display:none">
+  <div class="spinner"></div>
+  <p>A processar dados...</p>
+</div>
+
+<div id="app" style="display:none">
+
+<aside id="sidebar">
+  <div class="sb-brand">
+    <span class="logo-text">MedSênior</span>
+    <div class="dtitle">Dashboard Relacionamento Comercial<br>Análise de Tickets</div>
+    <div class="creator">por MedSênior</div>
+  </div>
+  <nav class="sb-nav">
+    <button class="active" onclick="goScreen('s1')">Visão Geral</button>
+    <button onclick="goScreen('s2')">Por Localização</button>
+    <button onclick="goScreen('s3')">Por Agente</button>
+    <button onclick="goScreen('s4')">Tabela de Casos</button>
+    <button onclick="goScreen('s5')">Indicadores de Risco</button>
+    <button onclick="goScreen('s6')">Glossário</button>
+  </nav>
+  <hr class="sb-divider">
+  <div class="sb-action">
+    <button onclick="reabrirUpload()">Atualizar base</button>
+  </div>
+</aside>
+
+<div id="main">
+  <div id="header">
+    <div class="filter-row">
+      <div class="fg">
+        <label>Tipo de data</label>
+        <select id="fTD" onchange="onTipoDataChange()">
+          <option value="Criação">Criação</option>
+          <option value="Transferido Cred">Transferido Cred</option>
+          <option value="Encerrado">Encerrado</option>
+        </select>
+      </div>
+      <div class="fg"><label>Ano</label><div class="ms-wrap" id="wrapANO"><button class="ms-btn" id="btnANO" onclick="toggleMS('ANO')">Todos</button><div class="ms-dropdown" id="ddANO"></div></div></div>
+      <div class="fg"><label>Mês</label><div class="ms-wrap" id="wrapMES"><button class="ms-btn" id="btnMES" onclick="toggleMS('MES')">Todos</button><div class="ms-dropdown" id="ddMES"></div></div></div>
+      <div class="fg"><label>Dia</label><div class="ms-wrap" id="wrapDIA"><button class="ms-btn" id="btnDIA" onclick="toggleMS('DIA')">Todos</button><div class="ms-dropdown" id="ddDIA"></div></div></div>
+      <div class="fg"><label>Demanda</label><div class="ms-wrap" id="wrapDM"><button class="ms-btn" id="btnDM" onclick="toggleMS('DM')">Todos</button><div class="ms-dropdown" id="ddDM"></div></div></div>
+      <div class="fg"><label>Estado (UF)</label><div class="ms-wrap" id="wrapUF"><button class="ms-btn" id="btnUF" onclick="toggleMS('UF')">Todos</button><div class="ms-dropdown" id="ddUF"></div></div></div>
+      <div class="fg"><label>Status</label><div class="ms-wrap" id="wrapST"><button class="ms-btn" id="btnST" onclick="toggleMS('ST')">Todos</button><div class="ms-dropdown" id="ddST"></div></div></div>
+      <div class="fg"><label>Categoria</label><div class="ms-wrap" id="wrapTI"><button class="ms-btn" id="btnTI" onclick="toggleMS('TI')">Todos</button><div class="ms-dropdown" id="ddTI"></div></div></div>
+      <div class="fg"><label>Colaboradora</label><div class="ms-wrap" id="wrapCL"><button class="ms-btn" id="btnCL" onclick="toggleMS('CL')">Todos</button><div class="ms-dropdown" id="ddCL"></div></div></div>
+      <div class="fg"><label>Prazo</label><div class="ms-wrap" id="wrapPZ"><button class="ms-btn" id="btnPZ" onclick="toggleMS('PZ')">Todos</button><div class="ms-dropdown" id="ddPZ"></div></div></div>
+      <button class="btn-clear" onclick="clearFilters()">✕ Limpar</button>
+    </div>
+  </div>
+
+  <div id="content">
+
+    <!-- TELA 1: VISÃO GERAL -->
+    <div id="s1" class="screen active">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2 style="font-size:15px; font-weight:700; color:var(--c1);">Visão Geral — Relatório Consolidado</h2>
+        <button class="btn-exp" onclick="exportarVisaoGeralCSV()">⬇ Exportar Relatório Visão Geral (CSV)</button>
+      </div>
+
+      <div class="kpi-row" id="k1"></div>
+      
+      <div class="g3">
+        <div class="card">
+          <div class="card-title">Tickets por Mês</div>
+          <div class="cw"><canvas id="cMes"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Tickets por Status</div>
+          <div class="cw"><canvas id="cStatus"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Tipo de Solicitação</div>
+          <div class="cw"><canvas id="cTipoSol"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="card-title">Motivo do Direcionamento</div>
+        <div class="cw cw-lg"><canvas id="cMotivo"></canvas></div>
+      </div>
+    </div>
+
+    <!-- TELA 2: POR LOCALIZAÇÃO -->
+    <div id="s2" class="screen">
+      <div class="kpi-row" id="k2"></div>
+
+      <div class="g13">
+        <div class="card">
+          <div class="card-title">Demandas por Estado (Tabela)</div>
+          <div class="card-sub" style="margin-bottom:5px">Clique em uma linha de Estado para filtrar as especialidades abaixo.</div>
+          <div class="tw">
+            <table id="tblEstado">
+              <thead>
+                <tr>
+                  <th>Estado</th>
+                  <th>Consulta</th>
+                  <th>Exame</th>
+                  <th>Sem Definição</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Solicitação por Estado (Tons de Verde)</div>
+          <div class="cw cw-lg"><canvas id="cEstado"></canvas></div>
+        </div>
+      </div>
+
+      <!-- TABELA MATRICIAL POR ESTADO (SP, DF, ES...) -->
+      <div class="card" style="margin-top:14px">
+        <div class="card-title">Especialidades Abertas por Regional / Estado (Matriz)</div>
+        <div class="card-sub">Visualização consolidada de especialidades divididas por colunas de Estado. Clique em qualquer item para ver os tickets.</div>
+        <div class="tw">
+          <table id="tblMatrizEstados">
+            <thead><tr id="matrizHead"></tr></thead>
+            <tbody id="matrizBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="g13" style="margin-top:14px">
+        <div class="card">
+          <div class="card-title">Solicitação por Especialidades (Mais recebidas)</div>
+          <div class="card-sub" style="margin-bottom:5px">Clique em uma linha de especialidade para ver na Tabela de Casos.</div>
+          <div class="ag-info" id="espInfoSel">A apresentar: Todas as regiões</div>
+          <div class="tw">
+            <table id="tblEspecialidade">
+              <thead>
+                <tr>
+                  <th>Especialidade</th>
+                  <th>Qtd Demandas</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Ranking — TOP 15 Especialidades (Do Maior para o Menor)</div>
+          <div class="cw cw-lg"><canvas id="cTop15"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA 3: POR AGENTE -->
+    <div id="s3" class="screen">
+      <div class="kpi-row" id="k3"></div>
+      
+      <div class="g31">
+        <div class="card">
+          <div class="card-title">Tickets Tratados por Colaboradora</div>
+          <div class="card-sub">Baseado na coluna Atribuído. Clique em uma colaboradora para filtrar.</div>
+          <div class="tw" style="max-height:420px">
+            <table id="tblAgente">
+              <thead>
+                <tr>
+                  <th>Colaboradora (Atribuído)</th>
+                  <th>Aberto</th>
+                  <th>Fechado</th>
+                  <th>Pendente</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Evolução Diária de Atendimentos</div>
+          <div class="ag-info" id="agInfoSel">A apresentar: Todas as colaboradoras</div>
+          <div class="cw cw-lg"><canvas id="cEvolucaoAgente"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA 4: TABELA DE CASOS -->
+    <div id="s4" class="screen">
+      <div class="kpi-row" id="k4"></div>
+
+      <div class="card">
+        <div class="card-title">Tabela de Casos Filtrados</div>
+        <div class="sr">
+          <input type="text" id="srchCasos" placeholder="Pesquisar por ID, Solicitante ou Atribuído..." oninput="renderS4()">
+          <button class="btn-exp" onclick="exportarCSV()">⬇ Exportar CSV</button>
+        </div>
+
+        <div class="tw-full">
+          <table id="tblCasos">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Criação</th>
+                <th>Transferido Cred</th>
+                <th>Solicitante</th>
+                <th>Atribuído</th>
+                <th>Estado</th>
+                <th>Prazo</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="pag" id="pagCasos"></div>
+      </div>
+    </div>
+
+    <!-- TELA 5: INDICADORES DE RISCO -->
+    <div id="s5" class="screen">
+      <div class="kpi-row" id="k5"></div>
+
+      <div class="g3">
+        <div class="card">
+          <div class="card-title">🔴 Risco NIP — Dias em Aberto</div>
+          <div class="card-sub">Prazo estrito: 24h úteis (1 dia). Clica nas barras para ver na Tabela de Casos.</div>
+          <div class="cw"><canvas id="cRiscoNIP"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">💊 Prescrição Urgenciada — Dias em Aberto</div>
+          <div class="card-sub">Prazo estrito: 24h úteis (1 dia). Clica nas barras para ver na Tabela de Casos.</div>
+          <div class="cw"><canvas id="cUrgenciados"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📊 Demandas Gerais (Exceto NIP e Urg.)</div>
+          <div class="card-sub">Prazo padrão: 5 dias úteis. Clica nas barras para ver na Tabela de Casos.</div>
+          <div class="cw"><canvas id="cDemandasGerais"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="card-title">🔁 Reincidência de Beneficiários</div>
+        <div class="card-sub">Beneficiários com mais de 1 ticket na seleção</div>
+        <div class="tw" style="max-height:220px">
+          <table id="tblReincidencia">
+            <thead>
+              <tr>
+                <th>Beneficiário / Solicitante</th>
+                <th>Qtd Tickets</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA 6: GLOSSÁRIO COMPLETO -->
+    <div id="s6" class="screen">
+      <div class="kpi-row" id="k6"></div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <div class="card-title">📖 Glossário e Metodologia Exaustiva do Sistema — MedSênior</div>
+          <div style="font-size:12px; color:var(--dark); line-height:1.6; display:flex; flex-direction:column; gap:12px;">
+            <p>Este documento detalha exaustivamente todos os indicadores (KPIs), filtros interativos, gráficos, tabelas e regras de cálculo presentes neste dashboard de Relacionamento Comercial.</p>
+            
+            <hr style="border:none; border-top:1px solid var(--gray2)">
+            <h3 style="color:var(--c1); font-size:13px;">1. Descrição dos Cartões de Indicadores (KPIs)</h3>
+            <ul style="padding-left:18px; display:flex; flex-direction:column; gap:6px;">
+              <li><strong>Total Tickets:</strong> Soma total de tickets filtrados de acordo com os filtros de data, estado, status e demanda selecionados.</li>
+              <li><strong>Total Abertos:</strong> Quantidade e percentual de tickets cujo status atual no sistema é de atendimento em aberto.</li>
+              <li><strong>Pendente Cliente:</strong> Tickets aguardando resposta ou retorno do beneficiário/cliente.</li>
+              <li><strong>Resolvidos:</strong> Tickets com status fechado ou solucionado.</li>
+              <li><strong>Dentro do Prazo / Fora do Prazo:</strong> Monitoramento de conformidade baseado em dias úteis (descontando finais de semana e feriados nacionais). Prazo padrão: 5 dias úteis. Casos NIP ou Urgenciados possuem prazo estrito de 1 dia útil.</li>
+              <li><strong>Risco NIP:</strong> Tickets identificados com risco de Notificação de Investigação Preliminar (ANS), exigindo prioridade máxima.</li>
+              <li><strong>Rec. Fora Prazo (Reencaminhamento):</strong> Contagem de tickets cujo envio inicial à rede credenciada ultrapassou o limite operacional de 5 dias úteis.</li>
+              <li><strong>Urgenciados:</strong> Demandas com prescrição médica urgenciada.</li>
+            </ul>
+
+            <hr style="border:none; border-top:1px solid var(--gray2)">
+            <h3 style="color:var(--c1); font-size:13px;">2. Filtros Interativos do Topo</h3>
+            <ul style="padding-left:18px; display:flex; flex-direction:column; gap:6px;">
+              <li><strong>Tipo de Data:</strong> Permite alternar o eixo temporal entre <em>Criação</em>, <em>Transferido Cred</em> e <em>Encerrado</em>.</li>
+              <li><strong>Ano / Mês / Dia:</strong> Seleção múltipla para isolar períodos específicos. O filtro de dia interage diretamente com a data de abertura/fechamento do ticket.</li>
+              <li><strong>Demanda:</strong> Filtra entre as classificações operacionais internas (ex: <em>Gerais</em>, <em>Risco NIP</em>).</li>
+              <li><strong>Estado (UF):</strong> Restringe a análise por regional (Espírito Santo, São Paulo, São Paulo - Campinas, Paraná, etc.).</li>
+              <li><strong>Status / Categoria / Colaboradora / Prazo:</strong> Filtros cruzados que atualizam instantaneamente todos os gráficos, tabelas e KPIs.</li>
+            </ul>
+
+            <hr style="border:none; border-top:1px solid var(--gray2)">
+            <h3 style="color:var(--c1); font-size:13px;">3. Gráficos e Seções Principais</h3>
+            <ul style="padding-left:18px; display:flex; flex-direction:column; gap:6px;">
+              <li><strong>Visão Geral (Tela 1):</strong> Contém a distribuição temporal por meses, status das solicitações, tipos (Consulta/Exame) e os 10 principais motivos de direcionamento.</li>
+              <li><strong>Por Localização (Tela 2):</strong> Tabela cruzada por estado, mapa de calor em tons de verde, a <strong>Matriz de Especialidades Abertas por Regional</strong> (organizada em colunas por UF mantendo São Paulo e Campinas separadas) e o <strong>Ranking TOP 15 Especialidades</strong> ordenado estritamente do maior para o menor com todos os rótulos visíveis.</li>
+              <li><strong>Por Agente (Tela 3):</strong> Carga de trabalho individual por colaboradora e evolução diária dos atendimentos.</li>
+              <li><strong>Tabela de Casos (Tela 4):</strong> Listagem detalhada e paginada de todos os tickets correspondentes aos filtros ativos, com barra de pesquisa livre e botão de exportação em CSV.</li>
+              <li><strong>Indicadores de Risco (Tela 5):</strong> Análise detalhada de prazos para Risco NIP, Prescrições Urgenciadas e Demandas Gerais, além de tabela de reincidência de beneficiários.</li>
+            </ul>
+
+            <hr style="border:none; border-top:1px solid var(--gray2)">
+            <h3 style="color:var(--c1); font-size:13px;">4. Metodologia de Cálculo de Dias Úteis e Feriados</h3>
+            <p>O motor de cálculo do sistema desconsidera automaticamente os finais de semana (sábados e domingos) e cruza as datas com o calendário oficial de feriados nacionais brasileiros cadastrados no sistema (abrangendo de 2026 até 2030), garantindo precisão absoluta nos prazos de atendimento.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="footer">
+    <span id="ftrBase">Base de Tickets: 0</span>
+    <span id="ftrColab">Colaboradoras: 0</span>
+  </div>
+</div>
+</div>
+
+<script>
+const FERIADOS = new Set(["2026-01-01", "2026-02-16", "2026-02-17", "2026-04-03", "2026-04-21", "2026-05-01", "2026-09-07", "2026-10-12", "2026-11-02", "2026-11-15", "2026-11-20", "2026-12-25", "2027-01-01", "2027-03-08", "2027-03-09", "2027-03-26", "2027-04-21", "2027-05-01", "2027-09-07", "2027-10-12", "2027-11-02", "2027-11-15", "2027-11-20", "2027-12-25", "2028-01-01", "2028-02-21", "2028-02-22", "2028-04-14", "2028-04-21", "2028-05-01", "2028-09-07", "2028-10-12", "2028-11-02", "2028-11-15", "2028-11-20", "2028-12-25", "2029-01-01", "2029-02-12", "2029-02-13", "2029-03-30", "2029-04-21", "2029-05-01", "2029-09-07", "2029-10-12", "2029-11-02", "2029-11-15", "2029-11-20", "2029-12-25", "2030-01-01", "2030-03-04", "2030-03-05", "2030-04-19", "2030-04-21", "2030-05-01", "2030-09-07", "2030-10-12", "2030-11-02", "2030-11-15", "2030-11-20", "2030-12-25"]);
+const MESES_MAP = {'01':'JAN','02':'FEV','03':'MAR','04':'ABR','05':'MAI','06':'JUN','07':'JUL','08':'AGO','09':'SET','10':'OUT','11':'NOV','12':'DEZ'};
+
+Chart.register(ChartDataLabels);
+Chart.defaults.set('plugins.datalabels', {
+  color: '#1F2937',
+  font: { weight: 'bold', size: 10 },
+  anchor: 'end',
+  align: 'top',
+  formatter: (v) => v > 0 ? v.toLocaleString('pt-PT') : ''
+});
+
+let RAW = [], filtered = [];
+let uploadState = { ticketsOk: false, ticketsData: null };
+let agenteSelecionado = null;
+let estadoSelecionadoS2 = null;
+let pageS4 = 1;
+const perPageS4 = 50;
+const charts = {};
+
+let filtroGraficoMes = null;
+let filtroGraficoStatus = null;
+let filtroGraficoTipo = null;
+let filtroGraficoMotivo = null;
+let filtroGraficoUF = null;
+let filtroGraficoEspecialidade = null;
+let filtroGraficoAgente = null;
+let prazoFiltroExtra = null;
+
+function checarBtnIniciar() {
+  document.getElementById('btnIniciar').disabled = !uploadState.ticketsOk;
+}
+
+function setCardStatus(cardId, stId, status, msg) {
+  const card = document.getElementById(cardId);
+  const st = document.getElementById(stId);
+  card.classList.remove('ok','erro');
+  if(status === 'ok') { card.classList.add('ok'); st.textContent = '✅ ' + msg; }
+  if(status === 'erro') { card.classList.add('erro'); st.textContent = '❌ ' + msg; }
+  if(status === 'wait') { st.textContent = '⬜ ' + msg; }
+}
+
+function validarTickets(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  uploadState.ticketsOk = false;
+  setCardStatus('cardTickets','stTickets','wait','A validar...');
+  
+  const reader = new FileReader();
+  reader.onload = evt => {
+    try {
+      const decoder = new TextDecoder('windows-1252');
+      const text = decoder.decode(evt.target.result);
+      const raw = parseCSV(text);
+      if(!raw.length) throw new Error('Ficheiro vazio');
+      uploadState.ticketsOk = true;
+      uploadState.ticketsData = raw;
+      setCardStatus('cardTickets','stTickets','ok',`${raw.length.toLocaleString('pt-PT')} registos detetados`);
+    } catch(err) {
+      console.error(err);
+      setCardStatus('cardTickets','stTickets','erro','Erro ao processar ficheiro CSV');
+    }
+    checarBtnIniciar();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseCSV(text) {
+  let lines = [];
+  let row = [''];
+  let inQuotes = false;
+  
+  for (let i = 0; i < text.length; i++) {
+    let c = text[i];
+    let nextC = text[i + 1];
+    
+    if (c === '"') {
+      if (inQuotes && nextC === '"') {
+        row[row.length - 1] += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if ((c === ',' || c === ';') && !inQuotes) {
+      row.push('');
+    } else if ((c === '\r' && nextC === '\n') || c === '\n' || c === '\r') {
+      if (c === '\r' && nextC === '\n') i++;
+      if (inQuotes) {
+        row[row.length - 1] += '\n';
+      } else {
+        lines.push(row);
+        row = [''];
+      }
+    } else {
+      row[row.length - 1] += c;
+    }
+  }
+  if (row.length > 1 || row[0] !== '') lines.push(row);
+  if (!lines.length) return [];
+  
+  let headers = lines[0].map((h, idx) => {
+    let clean = h.replace(/^"|"$/g, '').trim();
+    if (idx === 0) clean = clean.replace(/^\uFEFF/, '');
+    return corrigirTextoMojibake(clean);
+  });
+
+  let result = [];
+  for (let i = 1; i < lines.length; i++) {
+    let vals = lines[i];
+    if (vals.length === 1 && vals[0] === '') continue;
+    let obj = {};
+    headers.forEach((h, idx) => {
+      let val = (vals[idx] !== undefined ? vals[idx] : '').replace(/^"|"$/g, '').trim();
+      obj[h] = corrigirTextoMojibake(val);
+    });
+    result.push(obj);
+  }
+  return result;
+}
+
+function corrigirTextoMojibake(str) {
+  if (!str || typeof str !== 'string') return str;
+  let s = str.trim();
+  if (s === '' || s === 'Â' || s === 'Â ' || s === '\xa0' || s.toLowerCase() === 'nan') return 'Não preenchido';
+
+  const mapCorrompidos = {
+    'EspÃ­rito Santo': 'Espírito Santo',
+    'RessonÃ¢ncia MagnÃ©tica': 'Ressonância Magnética',
+    'PunÃ§Ãµes': 'Punções',
+    'Outros â€“ Exames': 'Outros – Exames',
+    'SÃ£o Paulo': 'São Paulo',
+    'SÃ£o Paulo - Campinas': 'São Paulo - Campinas',
+    'ParanÃ¡': 'Paraná',
+    'AtribuÃ­do': 'Atribuído'
+  };
+
+  if (mapCorrompidos[s]) return mapCorrompidos[s];
+
+  try {
+    let converted = decodeURIComponent(escape(s));
+    if (converted && !converted.includes('Ã') && !converted.includes('Â')) s = converted;
+  } catch(e) {}
+
+  s = s.replace(/Ã­/g, 'í').replace(/Ã¢/g, 'â').replace(/Ã©/g, 'é').replace(/Ã£/g, 'ã').replace(/Ã¡/g, 'á').replace(/Ã§/g, 'ç').replace(/Ãµes/g, 'ções').replace(/â€“/g, '–').replace(/Â/g, '');
+  return s.trim() === '' ? 'Não preenchido' : s.trim();
+}
+
+function norm(str) {
+  return String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+}
+
+function getCol(obj, possibleKeys) {
+  for (let pk of possibleKeys) {
+    if (obj[pk] !== undefined && String(obj[pk]).trim() !== '') return corrigirTextoMojibake(String(obj[pk]));
+  }
+  const keys = Object.keys(obj);
+  for (let pk of possibleKeys) {
+    const target = norm(pk);
+    for (let k of keys) {
+      if (norm(k) === target) {
+        const val = String(obj[k]).trim();
+        if (val !== '' && val !== 'null' && val !== 'undefined') return corrigirTextoMojibake(val);
+      }
+    }
+  }
+  return '';
+}
+
+function limparEstado(ufRaw) {
+  let u = corrigirTextoMojibake(ufRaw);
+  if (!u || u === 'Não preenchido' || u === 'Â') return 'Não preenchido';
+  const uNorm = u.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  
+  if (uNorm.includes('CAMPINAS')) return 'São Paulo - Campinas';
+  if (uNorm.includes('SAO PAULO') || uNorm === 'SP') return 'São Paulo';
+  if (uNorm.includes('PARANA') || uNorm === 'PR') return 'Paraná';
+  if (uNorm.includes('ESPIRITO SANTO') || uNorm === 'ES') return 'Espírito Santo';
+  if (uNorm.includes('RIO DE JANEIRO') || uNorm === 'RJ') return 'Rio de Janeiro';
+  if (uNorm.includes('MINAS GERAIS') || uNorm === 'MG') return 'Minas Gerais';
+  if (uNorm.includes('DISTRITO FEDERAL') || uNorm === 'DF') return 'Distrito Federal';
+  return u;
+}
+
+function limparEspecialidade(r) {
+  const cat = getCol(r, ['Rede credenciada - Categoria', 'Categoria', 'Rede credenciada']).toUpperCase();
+  const consultaVal = getCol(r, ['[DGA] Consultas', 'Consultas']);
+  const exameVal = getCol(r, ['[DGA] Exames', 'Exames']);
+  const geralVal = getCol(r, ['Especialidade']);
+
+  let val = '';
+  if (cat.includes('CONSULTA')) val = consultaVal || geralVal;
+  else if (cat.includes('EXAME')) val = exameVal || geralVal;
+  else val = consultaVal || exameVal || geralVal;
+
+  val = corrigirTextoMojibake(val);
+  return (!val || val === 'Não preenchido' || val === 'Â') ? 'Não preenchido' : val;
+}
+
+function parseDateStr(s) {
+  if(!s || !String(s).trim()) return null;
+  s = String(s).trim();
+  let isoMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`;
+  let brMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (brMatch) {
+    let day = brMatch[1].padStart(2, '0');
+    let month = brMatch[2].padStart(2, '0');
+    let y = parseInt(brMatch[3]);
+    if (y < 100) y += 2000;
+    return `${y}-${month}-${day}`;
+  }
+  return null;
+}
+
+function duJS(d1, d2) {
+  if(!d1 || !d2) return null;
+  const a = new Date(d1+'T00:00:00'), b = new Date(d2+'T00:00:00');
+  if(isNaN(a) || isNaN(b)) return null;
+  let n = 0, cur = new Date(Math.min(a,b)), end = new Date(Math.max(a,b));
+  while(cur < end) {
+    const dow = cur.getDay(), ds = cur.toISOString().slice(0,10);
+    if(dow > 0 && dow < 6 && !FERIADOS.has(ds)) n++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return n;
+}
+
+function fmtD(s) {
+  if(!s) return '—';
+  const d = new Date(s+'T00:00:00');
+  return isNaN(d) ? s : d.toLocaleDateString('pt-PT');
+}
+
+function processarBaseData(r, tipoData) {
+  // Atribuído / Assignee name
+  const atribRaw = getCol(r, ['Assignee name', 'Atribuído', 'Atribuido', 'AtribuÃ­do', 'Agente', 'Responsável']);
+  let atrib = corrigirTextoMojibake(atribRaw);
+  if (!atrib || atrib === 'Não preenchido' || atrib === 'Â') atrib = 'Não assumido';
+
+  // Status do ticket / Ticket status
+  const stOrig = getCol(r, ['Ticket status', 'Status do ticket', 'Status', 'Estado do ticket']).toLowerCase();
+  let st = 'ABERTO';
+  if(['closed','solved','hold'].includes(stOrig)) st = 'FECHADO';
+  else if(stOrig === 'pending') st = 'PENDENTE - CLIENTE';
+
+  // Datas: Criação, Transferido Cred, Resolução / Solved
+  const cr = parseDateStr(getCol(r, ['Ticket created - Timestamp', 'Criação', 'Criacao', 'Data de criação']));
+  const tCred = parseDateStr(getCol(r, ['Transferido Cred', 'Transferido Credenciada']));
+  const resol = parseDateStr(getCol(r, ['Ticket solved - Timestamp', 'Resolução', 'Resolucao', 'Data de resolução']));
+
+  let dataRef = null;
+  if(tipoData === 'Criação') dataRef = cr || resol || tCred;
+  else if(tipoData === 'Transferido Cred') dataRef = tCred || cr;
+  else if(tipoData === 'Encerrado') dataRef = resol || cr;
+
+  if(!dataRef) return null;
+
+  const nipRaw = getCol(r, ['[Rede] Risco NIP', 'Risco NIP', 'NIP']).toLowerCase();
+  const nip = nipRaw === 'sim' ? 'SIM' : 'NÃO';
+  const demanda = nip === 'SIM' ? 'Risco NIP' : 'Gerais';
+
+  const catRaw = getCol(r, ['Rede credenciada - Categoria', 'Categoria', 'Rede credenciada']).toUpperCase();
+  let tipo = 'SEM DEFINIÇÃO';
+  if(catRaw.includes('CONSULTA')) tipo = 'CONSULTA';
+  else if(catRaw.includes('EXAME')) tipo = 'EXAME';
+
+  const urgRaw = getCol(r, ['Prescrição médica urgenciada?', 'Prescricao medica urgenciada', 'Urgenciado']).toLowerCase();
+  const urg = urgRaw === 'sim' ? 'SIM' : 'NÃO';
+  
+  const ufRaw = getCol(r, ['Estado do beneficiário', 'Estado do beneficiario', 'UF', 'Estado']);
+  const uf = limparEstado(ufRaw);
+
+  const ano = dataRef.slice(0,4);
+  const mesNum = dataRef.slice(5,7);
+  const mesExtenso = MESES_MAP[mesNum] || mesNum;
+
+  const todayStr = new Date().toISOString().slice(0,10);
+  const dataRefFim = st === 'FECHADO' ? (resol || todayStr) : todayStr;
+
+  const diasUteis = duJS(dataRef, dataRefFim);
+  const limitePrazo = (nip === 'SIM' || urg === 'SIM') ? 1 : 5;
+  const prazo = (diasUteis !== null && diasUteis > limitePrazo) ? 'FORA DO PRAZO' : 'DENTRO DO PRAZO';
+
+  const enviadoFora = (cr && tCred) ? (duJS(cr, tCred) > 5) : false;
+  const motivo = corrigirTextoMojibake(getCol(r, ['[DGA] Motivo do Direcionamento', 'Motivo do Direcionamento', 'Motivo'])) || 'Não Informado';
+  const especialidade = limparEspecialidade(r);
+  
+  // Solicitante / Requester name
+  const solicitante = corrigirTextoMojibake(getCol(r, ['Requester name', 'Nome do solicitante', 'Solicitante', 'Beneficiário', 'Beneficiario'])) || 'Não Informado';
+  
+  // ID / Ticket ID
+  const ticketId = getCol(r, ['Ticket ID', 'ID', 'Id', 'id']) || '—';
+  
+  // Canal / Ticket channel
+  const canal = getCol(r, ['Ticket channel', 'Canal']);
+
+  return {
+    ...r,
+    'ID': ticketId,
+    'Solicitante': solicitante,
+    'Atribuído Display': atrib,
+    'Status Tratado': st,
+    'Demanda': demanda,
+    'Tipo': tipo,
+    'Risco NIP': nip,
+    'Urgenciado': urg,
+    'UF': uf,
+    'Ano': ano,
+    'Mês': mesExtenso,
+    'MêsNum': mesNum,
+    'DiaAberto': cr ? cr.slice(8, 10) : '',
+    'DiaFechado': resol ? resol.slice(8, 10) : '',
+    'DiaPendente': cr ? cr.slice(8, 10) : '',
+    'Criação': cr,
+    'Transferido Cred': tCred,
+    'Resolução': resol,
+    'Dias Uteis': diasUteis,
+    'Prazo': prazo,
+    'Enviado Fora do Prazo': enviadoFora,
+    'Motivo': motivo,
+    'Especialidade': especialidade,
+    'Canal': canal
+  };
+}
+
+function reprocessarBase() {
+  const tipoData = document.getElementById('fTD')?.value || 'Criação';
+  RAW = uploadState.ticketsData.map(r => processarBaseData(r, tipoData)).filter(Boolean);
+  populateFiltros();
+  applyFilters();
+}
+
+function iniciarDashboard() {
+  document.getElementById('screenUpload').style.display = 'none';
+  document.getElementById('screenLoading').style.display = 'flex';
+  setTimeout(() => {
+    document.getElementById('screenLoading').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    reprocessarBase();
+    document.getElementById('ftrBase').textContent = `Base de Registos: ${uploadState.ticketsData.length.toLocaleString('pt-PT')}`;
+  }, 100);
+}
+
+const MS = { ANO:{vals:[],opts:[]}, MES:{vals:[],opts:[]}, DIA:{vals:[],opts:[]}, DM:{vals:[],opts:[]}, UF:{vals:[],opts:[]}, ST:{vals:[],opts:[]}, TI:{vals:[],opts:[]}, CL:{vals:[],opts:[]}, PZ:{vals:[],opts:[]} };
+
+function populateFiltros() {
+  MS.ANO.opts = [...new Set(RAW.map(r=>r.Ano))].sort();
+  const mesesOrdenados = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  const mesesPresentes = [...new Set(RAW.map(r=>r.Mês))];
+  MS.MES.opts = mesesOrdenados.filter(m => mesesPresentes.includes(m));
+  MS.DIA.opts = Array.from({length: 31}, (_, i) => String(i + 1).padStart(2, '0'));
+  MS.DM.opts = [...new Set(RAW.map(r=>r.Demanda).filter(Boolean))].sort();
+  MS.UF.opts = [...new Set(RAW.map(r=>r.UF).filter(Boolean))].sort();
+  MS.ST.opts = ['ABERTO','FECHADO','PENDENTE - CLIENTE'];
+  MS.TI.opts = ['CONSULTA','EXAME','SEM DEFINIÇÃO'];
+  MS.CL.opts = [...new Set(RAW.map(r=>r['Atribuído Display']).filter(Boolean))].sort();
+  MS.PZ.opts = ['DENTRO DO PRAZO','FORA DO PRAZO'];
+  Object.keys(MS).forEach(buildDD);
+  Object.keys(MS).forEach(updateBtn);
+}
+
+function buildDD(key) {
+  const dd = document.getElementById('dd'+key);
+  if(!dd) return;
+  let h = `<div class="ms-item ms-select-all"><input type="checkbox" id="chkAll${key}" checked onchange="toggleAll('${key}')"><label for="chkAll${key}">Todos</label></div><hr class="ms-divider">`;
+  MS[key].opts.forEach((o,i) => {
+    h += `<div class="ms-item"><input type="checkbox" id="chk${key}${i}" checked onchange="toggleOpt('${key}',${i})"><label for="chk${key}${i}">${o}</label></div>`;
+  });
+  dd.innerHTML = h;
+}
+
+function toggleAll(key) {
+  const allEl = document.getElementById('chkAll'+key);
+  const marcar = allEl ? allEl.checked : true;
+  MS[key].vals = marcar ? [] : [...MS[key].opts];
+  MS[key].opts.forEach((_,i) => { const el = document.getElementById('chk'+key+i); if(el) el.checked = marcar; });
+  updateBtn(key); applyFilters();
+}
+
+function toggleOpt(key, idx) {
+  const opt = MS[key].opts[idx];
+  const el = document.getElementById('chk'+key+idx);
+  const marcado = el ? el.checked : true;
+  const pos = MS[key].vals.indexOf(opt);
+  if(marcado && pos >= 0) MS[key].vals.splice(pos,1);
+  else if(!marcado && pos < 0) MS[key].vals.push(opt);
+  document.getElementById('chkAll'+key).checked = MS[key].vals.length === 0;
+  updateBtn(key); applyFilters();
+}
+
+function updateBtn(key) {
+  const btn = document.getElementById('btn'+key);
+  if(!btn) return;
+  const exc = MS[key].vals;
+  if(exc.length === 0) btn.textContent = 'Todos';
+  else {
+    const sel = MS[key].opts.filter(o => !exc.includes(o));
+    btn.textContent = sel.length === 1 ? sel[0] : sel.length + ' sel.';
+  }
+  btn.classList.toggle('active', exc.length > 0);
+}
+
+function toggleMS(key) {
+  Object.keys(MS).forEach(k => { if(k!==key) document.getElementById('dd'+k)?.classList.remove('open'); });
+  document.getElementById('dd'+key)?.classList.toggle('open');
+}
+
+document.addEventListener('click', e => {
+  if(!e.target.closest('.ms-wrap')) document.querySelectorAll('.ms-dropdown').forEach(d=>d.classList.remove('open'));
+});
+
+function onTipoDataChange() { reprocessarBase(); }
+
+function clearFilters() {
+  limparFiltrosGraficos();
+  estadoSelecionadoS2 = null;
+  Object.keys(MS).forEach(k => {
+    MS[k].vals = [];
+    const chk = document.getElementById('chkAll'+k);
+    if(chk) chk.checked = true;
+    MS[k].opts.forEach((_,i) => { const el = document.getElementById('chk'+k+i); if(el) el.checked = true; });
+    updateBtn(k);
+  });
+  applyFilters();
+}
+
+function limparFiltrosGraficos() {
+  filtroGraficoMes = null;
+  filtroGraficoStatus = null;
+  filtroGraficoTipo = null;
+  filtroGraficoMotivo = null;
+  filtroGraficoUF = null;
+  filtroGraficoEspecialidade = null;
+  filtroGraficoAgente = null;
+  prazoFiltroExtra = null;
+}
+
+function applyFilters() {
+  filtered = RAW.filter(r => {
+    if(filtroGraficoMes && r.Mês !== filtroGraficoMes) return false;
+    if(filtroGraficoStatus && r['Status Tratado'] !== filtroGraficoStatus) return false;
+    if(filtroGraficoTipo && r.Tipo !== filtroGraficoTipo) return false;
+    if(filtroGraficoMotivo && r.Motivo !== filtroGraficoMotivo) return false;
+    if(filtroGraficoUF && r.UF !== filtroGraficoUF) return false;
+    if(filtroGraficoEspecialidade && r.Especialidade !== filtroGraficoEspecialidade) return false;
+    if(filtroGraficoAgente && r['Atribuído Display'] !== filtroGraficoAgente) return false;
+    if(prazoFiltroExtra && r.Prazo !== prazoFiltroExtra) return false;
+
+    if(MS.ANO.vals.length && MS.ANO.vals.includes(r.Ano)) return false;
+    if(MS.MES.vals.length && MS.MES.vals.includes(r.Mês)) return false;
+    if(MS.DIA.vals.length) {
+      let diaTicket = r.DiaAberto;
+      if(r['Status Tratado'] === 'FECHADO') diaTicket = r.DiaFechado;
+      else if(r['Status Tratado'] === 'PENDENTE - CLIENTE') diaTicket = r.DiaPendente;
+      if(MS.DIA.vals.includes(diaTicket)) return false;
+    }
+    if(MS.DM.vals.length && MS.DM.vals.includes(r.Demanda)) return false;
+    if(MS.UF.vals.length && MS.UF.vals.includes(r.UF)) return false;
+    if(MS.ST.vals.length && MS.ST.vals.includes(r['Status Tratado'])) return false;
+    if(MS.TI.vals.length && MS.TI.vals.includes(r.Tipo)) return false;
+    if(MS.CL.vals.length && MS.CL.vals.includes(r['Atribuído Display'])) return false;
+    if(MS.PZ.vals.length && MS.PZ.vals.includes(r.Prazo)) return false;
+    return true;
+  });
+
+  pageS4 = 1;
+  renderKPIs();
+  try { renderScreenCharts(); } catch(e) {}
+}
+
+const fmt = n => n == null ? '—' : Number(n).toLocaleString('pt-PT');
+const pct = (v,t) => t > 0 ? (v/t*100).toFixed(1)+'%' : '0%';
+
+function renderKPIs() {
+  const total = filtered.length;
+  const abertos = filtered.filter(r=>r['Status Tratado']==='ABERTO').length;
+  const pend = filtered.filter(r=>r['Status Tratado']==='PENDENTE - CLIENTE').length;
+  const resolv = filtered.filter(r=>r['Status Tratado']==='FECHADO').length;
+  const dentroP = filtered.filter(r=>r.Prazo==='DENTRO DO PRAZO').length;
+  const foraP = filtered.filter(r=>r.Prazo==='FORA DO PRAZO').length;
+  const nip = filtered.filter(r=>r['Risco NIP']==='SIM').length;
+  const foraFora = filtered.filter(r=>r['Enviado Fora do Prazo']).length;
+  const urg = filtered.filter(r=>r.Urgenciado==='SIM').length;
+
+  const html = `
+    <div class="kpi neutral"><div class="kpi-lbl">Total Tickets</div><div class="kpi-val">${fmt(total)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Total Abertos</div><div class="kpi-val">${fmt(abertos)}</div><div class="kpi-sub">${pct(abertos,total)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Pendente Cliente</div><div class="kpi-val">${fmt(pend)}</div><div class="kpi-sub">${pct(pend,total)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Resolvidos</div><div class="kpi-val">${fmt(resolv)}</div><div class="kpi-sub">${pct(resolv,total)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Dentro do Prazo</div><div class="kpi-val">${pct(dentroP,total)}</div><div class="kpi-sub">${fmt(dentroP)} tickets</div></div>
+    <div class="kpi alert"><div class="kpi-lbl">Fora do Prazo</div><div class="kpi-val">${pct(foraP,total)}</div><div class="kpi-sub">${fmt(foraP)} tickets</div></div>
+    <div class="kpi alert"><div class="kpi-lbl">Risco NIP</div><div class="kpi-val">${fmt(nip)}</div><div class="kpi-sub">${pct(nip,total)}</div></div>
+    <div class="kpi alert"><div class="kpi-lbl">Rec. Fora Prazo</div><div class="kpi-val">${fmt(foraFora)}</div><div class="kpi-sub">${pct(foraFora,total)}</div></div>
+    <div class="kpi neutral"><div class="kpi-lbl">Urgenciados</div><div class="kpi-val">${fmt(urg)}</div><div class="kpi-sub">${pct(urg,total)}</div></div>`;
+  ['k1','k2','k3','k4','k5','k6'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; });
+}
+
+function mkChart(id, cfg) {
+  if (typeof Chart === 'undefined') return;
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!cfg.options) cfg.options = {};
+  if (!cfg.options.layout) cfg.options.layout = {};
+  cfg.options.layout.padding = { top: 22, left: 5, right: 15, bottom: 5 };
+  charts[id] = new Chart(el, cfg);
+}
+
+function renderScreenCharts() {
+  const activeScreen = document.querySelector('.screen.active')?.id;
+  if(activeScreen === 's1') renderS1();
+  if(activeScreen === 's2') renderS2();
+  if(activeScreen === 's3') renderS3();
+  if(activeScreen === 's4') renderS4();
+  if(activeScreen === 's5') renderS5();
+}
+
+function renderS1() {
+  const mesesOrd = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  const countMes = {};
+  filtered.forEach(r => countMes[r.Mês] = (countMes[r.Mês]||0) + 1);
+  const labelsMes = mesesOrd.filter(m => countMes[m] !== undefined);
+  
+  mkChart('cMes', {
+    type: 'bar',
+    data: { labels: labelsMes, datasets: [{ label: 'Tickets', data: labelsMes.map(m => countMes[m]), backgroundColor: '#327746', borderRadius: 4 }] },
+    options: {
+      plugins: { legend: { display: false } }, responsive: true, scales: { y: { beginAtZero: true, grace: '15%' } },
+      onClick: (e, els) => { if(els.length) { filtroGraficoMes = labelsMes[els[0].index]; goScreen('s4'); } }
+    }
+  });
+
+  const stCount = { 'ABERTO': 0, 'FECHADO': 0, 'PENDENTE - CLIENTE': 0 };
+  filtered.forEach(r => { if(stCount[r['Status Tratado']] !== undefined) stCount[r['Status Tratado']]++; });
+  const stKeys = Object.keys(stCount);
+  mkChart('cStatus', {
+    type: 'bar',
+    data: { labels: stKeys, datasets: [{ label: 'Qtd', data: stKeys.map(k => stCount[k]), backgroundColor: ['#2563EB','#059669','#D97706'], borderRadius: 4 }] },
+    options: {
+      indexAxis: 'y', plugins: { legend: { display: false }, datalabels: { align: 'right', anchor: 'end' } }, responsive: true, scales: { x: { beginAtZero: true, grace: '15%' } },
+      onClick: (e, els) => { if(els.length) { filtroGraficoStatus = stKeys[els[0].index]; goScreen('s4'); } }
+    }
+  });
+
+  const tipoCount = { 'CONSULTA': 0, 'EXAME': 0, 'SEM DEFINIÇÃO': 0 };
+  filtered.forEach(r => { if(tipoCount[r.Tipo] !== undefined) tipoCount[r.Tipo]++; });
+  const tipoKeys = Object.keys(tipoCount);
+  mkChart('cTipoSol', {
+    type: 'bar',
+    data: { labels: tipoKeys, datasets: [{ label: 'Qtd', data: tipoKeys.map(k => tipoCount[k]), backgroundColor: ['#2D6A4F','#52B788','#B7E4C7'], borderRadius: 4 }] },
+    options: {
+      indexAxis: 'y', plugins: { legend: { display: false }, datalabels: { align: 'right', anchor: 'end' } }, responsive: true, scales: { x: { beginAtZero: true, grace: '15%' } },
+      onClick: (e, els) => { if(els.length) { filtroGraficoTipo = tipoKeys[els[0].index]; goScreen('s4'); } }
+    }
+  });
+
+  const motCount = {};
+  filtered.forEach(r => motCount[r.Motivo] = (motCount[r.Motivo]||0) + 1);
+  const motSorted = Object.keys(motCount).sort((a,b) => motCount[b] - motCount[a]).slice(0, 10);
+  mkChart('cMotivo', {
+    type: 'bar',
+    data: { labels: motSorted, datasets: [{ label: 'Demandas', data: motSorted.map(m => motCount[m]), backgroundColor: '#703987', borderRadius: 4 }] },
+    options: {
+      plugins: { legend: { display: false } }, responsive: true, scales: { y: { beginAtZero: true, grace: '15%' } },
+      onClick: (e, els) => { if(els.length) { filtroGraficoMotivo = motSorted[els[0].index]; goScreen('s4'); } }
+    }
+  });
+}
+
+function renderS2() {
+  const estData = {};
+  filtered.forEach(r => {
+    if(!estData[r.UF]) estData[r.UF] = { CONSULTA: 0, EXAME: 0, 'SEM DEFINIÇÃO': 0, total: 0 };
+    estData[r.UF][r.Tipo]++;
+    estData[r.UF].total++;
+  });
+  const estSorted = Object.keys(estData).sort((a,b) => estData[b].total - estData[a].total);
+
+  document.getElementById('tblEstado').querySelector('tbody').innerHTML = estSorted.map(uf => `
+    <tr style="cursor:pointer; ${estadoSelecionadoS2 === uf ? 'background:#E8F5E9;' : ''}" onclick="selecionarEstadoS2('${uf.replace(/'/g,"\\'")}')">
+      <td><strong>${uf}</strong></td><td>${fmt(estData[uf].CONSULTA)}</td><td>${fmt(estData[uf].EXAME)}</td><td>${fmt(estData[uf]['SEM DEFINIÇÃO'])}</td><td><strong>${fmt(estData[uf].total)}</strong></td>
+    </tr>
+  `).join('');
+
+  mkChart('cEstado', {
+    type: 'bar',
+    data: {
+      labels: estSorted,
+      datasets: [
+        { label: 'Consulta', data: estSorted.map(u => estData[u].CONSULTA), backgroundColor: '#1B4332' },
+        { label: 'Exame', data: estSorted.map(u => estData[u].EXAME), backgroundColor: '#40916C' },
+        { label: 'Sem Definição', data: estSorted.map(u => estData[u]['SEM DEFINIÇÃO']), backgroundColor: '#95D5B2' }
+      ]
+    },
+    options: {
+      indexAxis: 'y', plugins: { legend: { position: 'bottom' }, datalabels: { align: 'center', anchor: 'center', color: '#fff' } }, responsive: true, scales: { x: { stacked: true, beginAtZero: true, grace: '15%' }, y: { stacked: true } },
+      onClick: (e, els) => { if(els.length) { filtroGraficoUF = estSorted[els[0].index]; goScreen('s4'); } }
+    }
+  });
+
+  renderMatrizEstados();
+
+  const baseEsp = estadoSelecionadoS2 ? filtered.filter(r => r.UF === estadoSelecionadoS2) : filtered;
+  document.getElementById('espInfoSel').textContent = 'A apresentar: ' + (estadoSelecionadoS2 ? `Estado de ${estadoSelecionadoS2}` : 'Todas as regiões');
+
+  const espCount = {};
+  baseEsp.forEach(r => espCount[r.Especialidade] = (espCount[r.Especialidade]||0) + 1);
+  const espSorted = Object.keys(espCount).sort((a,b) => espCount[b] - espCount[a]);
+
+  document.getElementById('tblEspecialidade').querySelector('tbody').innerHTML = espSorted.map(e => `
+    <tr style="cursor:pointer" title="Clique para ver os casos desta especialidade" onclick="filtrarPorEspecialidade('${e.replace(/'/g,"\\'")}')">
+      <td><span style="color:var(--c1);text-decoration:underline">${e}</span></td>
+      <td><strong>${fmt(espCount[e])}</strong></td>
+    </tr>
+  `).join('');
+
+  const top15 = espSorted.slice(0, 15);
+  mkChart('cTop15', {
+    type: 'bar',
+    data: { labels: top15, datasets: [{ label: 'Demandas', data: top15.map(e => espCount[e]), backgroundColor: '#327746', borderRadius: 4 }] },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false }, datalabels: { align: 'right', anchor: 'end' } },
+      responsive: true,
+      scales: {
+        x: { beginAtZero: true, grace: '15%' },
+        y: { ticks: { autoSkip: false, font: { size: 11 } } }
+      },
+      onClick: (e, els) => { if(els.length) { filtroGraficoEspecialidade = top15[els[0].index]; goScreen('s4'); } }
+    }
+  });
+}
+
+function renderMatrizEstados() {
+  const abertos = filtered.filter(r => r['Status Tratado'] === 'ABERTO');
+  const ufs = [...new Set(abertos.map(r => r.UF))].filter(u => u && u !== 'Não preenchido').sort();
+  const mapaUfEsp = {};
+  let maxLinhas = 0;
+
+  ufs.forEach(uf => {
+    const mapCount = {};
+    abertos.filter(r => r.UF === uf).forEach(r => {
+      const esp = r.Especialidade;
+      if(esp && esp !== 'Não preenchido') mapCount[esp] = (mapCount[esp]||0) + 1;
+    });
+    const lista = Object.entries(mapCount).sort((a,b) => b[1] - a[1]);
+    mapaUfEsp[uf] = lista;
+    if(lista.length > maxLinhas) maxLinhas = lista.length;
+  });
+
+  const headTr = document.getElementById('matrizHead');
+  const bodyTr = document.getElementById('matrizBody');
+
+  if(ufs.length === 0) {
+    headTr.innerHTML = '<th>Regional / Estado</th>';
+    bodyTr.innerHTML = '<tr><td style="text-align:center;color:var(--gray)">Nenhum ticket aberto encontrado.</td></tr>';
+    return;
+  }
+
+  headTr.innerHTML = ufs.map(uf => `<th>${uf}</th>`).join('');
+  
+  let html = '';
+  for(let i = 0; i < maxLinhas; i++) {
+    html += '<tr>';
+    ufs.forEach(uf => {
+      const item = mapaUfEsp[uf][i];
+      if(item) {
+        const [esp, qtd] = item;
+        html += `<td style="cursor:pointer;border-right:1px solid var(--gray2)" onclick="filtrarMatriz('${uf}','${esp.replace(/'/g,"\\'")}')" title="Clique para ver tickets abertos de ${esp} em ${uf}">
+          <span style="color:var(--c1);text-decoration:underline">${esp}</span> <span style="font-weight:700;color:var(--dark)">(${qtd})</span>
+        </td>`;
+      } else {
+        html += `<td style="border-right:1px solid var(--gray2);color:var(--gray)">—</td>`;
+      }
+    });
+    html += '</tr>';
+  }
+  bodyTr.innerHTML = html;
+}
+
+function filtrarMatriz(uf, esp) {
+  filtroGraficoUF = uf;
+  filtroGraficoEspecialidade = esp;
+  goScreen('s4');
+}
+
+function filtrarPorEspecialidade(esp) {
+  filtroGraficoEspecialidade = esp;
+  goScreen('s4');
+}
+
+function selecionarEstadoS2(uf) {
+  estadoSelecionadoS2 = (estadoSelecionadoS2 === uf) ? null : uf;
+  renderS2();
+}
+
+function renderS3() {
+  const agData = {};
+  filtered.forEach(r => {
+    const ag = r['Atribuído Display'];
+    if(!agData[ag]) agData[ag] = { ABERTO: 0, FECHADO: 0, 'PENDENTE - CLIENTE': 0, total: 0 };
+    if(agData[ag][r['Status Tratado']] !== undefined) agData[ag][r['Status Tratado']]++;
+    agData[ag].total++;
+  });
+  const agSorted = Object.keys(agData).sort((a,b) => agData[b].total - agData[a].total);
+
+  document.getElementById('tblAgente').querySelector('tbody').innerHTML = agSorted.map(ag => `
+    <tr style="cursor:pointer" onclick="selecionarAgente('${ag.replace(/'/g,"\\'")}')">
+      <td class="dga">${ag}</td><td>${fmt(agData[ag].ABERTO)}</td><td>${fmt(agData[ag].FECHADO)}</td><td>${fmt(agData[ag]['PENDENTE - CLIENTE'])}</td><td><strong>${fmt(agData[ag].total)}</strong></td>
+    </tr>
+  `).join('');
+
+  document.getElementById('agInfoSel').textContent = 'A apresentar: ' + (agenteSelecionado || 'Todas as colaboradoras');
+  const baseAg = agenteSelecionado ? filtered.filter(r => r['Atribuído Display'] === agenteSelecionado) : filtered;
+  const countDia = {};
+  baseAg.forEach(r => {
+    const dt = r['Criação'];
+    if(!dt) return;
+    if(!countDia[dt]) countDia[dt] = { ABERTO: 0, FECHADO: 0, 'PENDENTE - CLIENTE': 0 };
+    if(countDia[dt][r['Status Tratado']] !== undefined) countDia[dt][r['Status Tratado']]++;
+  });
+  const diasSorted = Object.keys(countDia).sort();
+
+  mkChart('cEvolucaoAgente', {
+    type: 'line',
+    data: {
+      labels: diasSorted.map(fmtD),
+      datasets: [
+        { label: 'Aberto', data: diasSorted.map(d => countDia[d].ABERTO), borderColor: '#2563EB', tension: 0.3 },
+        { label: 'Fechado', data: diasSorted.map(d => countDia[d].FECHADO), borderColor: '#059669', tension: 0.3 },
+        { label: 'Pendente', data: diasSorted.map(d => countDia[d]['PENDENTE - CLIENTE']), borderColor: '#D97706', tension: 0.3 }
+      ]
+    },
+    options: {
+      plugins: { legend: { position: 'top' }, datalabels: { display: false } }, responsive: true, scales: { y: { beginAtZero: true, grace: '15%' } },
+      onClick: (e, els) => { if(els.length && agenteSelecionado) { filtroGraficoAgente = agenteSelecionado; goScreen('s4'); } }
+    }
+  });
+}
+
+function selecionarAgente(ag) {
+  agenteSelecionado = (agenteSelecionado === ag) ? null : ag;
+  renderS3();
+}
+
+function renderS4() {
+  const q = (document.getElementById('srchCasos')?.value || '').toLowerCase().trim();
+  let dados = filtered.filter(r => {
+    if(filtroGraficoMes && r.Mês !== filtroGraficoMes) return false;
+    if(filtroGraficoStatus && r['Status Tratado'] !== filtroGraficoStatus) return false;
+    if(filtroGraficoTipo && r.Tipo !== filtroGraficoTipo) return false;
+    if(filtroGraficoMotivo && r.Motivo !== filtroGraficoMotivo) return false;
+    if(filtroGraficoUF && r.UF !== filtroGraficoUF) return false;
+    if(filtroGraficoEspecialidade && r.Especialidade !== filtroGraficoEspecialidade) return false;
+    if(filtroGraficoAgente && r['Atribuído Display'] !== filtroGraficoAgente) return false;
+    if(prazoFiltroExtra && r.Prazo !== prazoFiltroExtra) return false;
+    if(!q) return true;
+    return String(r.ID).toLowerCase().includes(q) || String(r.Solicitante).toLowerCase().includes(q) || String(r['Atribuído Display']).toLowerCase().includes(q) || String(r.UF).toLowerCase().includes(q) || String(r.Especialidade).toLowerCase().includes(q);
+  });
+
+  const total = dados.length;
+  const maxPages = Math.ceil(total / perPageS4) || 1;
+  if(pageS4 > maxPages) pageS4 = 1;
+  const start = (pageS4 - 1) * perPageS4;
+  const pageData = dados.slice(start, start + perPageS4);
+
+  document.getElementById('tblCasos').querySelector('tbody').innerHTML = pageData.map(r => `
+    <tr>
+      <td><strong>${r.ID}</strong></td>
+      <td>${fmtD(r['Criação'])}</td>
+      <td>${fmtD(r['Transferido Cred'])}</td>
+      <td>${r.Solicitante}</td>
+      <td class="dga">${r['Atribuído Display']}</td>
+      <td>${r.UF}</td>
+      <td><span style="color:${r.Prazo==='DENTRO DO PRAZO'?'#059669':'#C0392B'};font-weight:700">${r.Prazo}</span></td>
+    </tr>
+  `).join('');
+
+  let filtrosAtivosTxt = [];
+  if(filtroGraficoMes) filtrosAtivosTxt.push('Mês: ' + filtroGraficoMes);
+  if(filtroGraficoStatus) filtrosAtivosTxt.push('Status: ' + filtroGraficoStatus);
+  if(filtroGraficoTipo) filtrosAtivosTxt.push('Tipo: ' + filtroGraficoTipo);
+  if(filtroGraficoMotivo) filtrosAtivosTxt.push('Motivo: ' + filtroGraficoMotivo);
+  if(filtroGraficoUF) filtrosAtivosTxt.push('Estado: ' + filtroGraficoUF);
+  if(filtroGraficoEspecialidade) filtrosAtivosTxt.push('Especialidade: ' + filtroGraficoEspecialidade);
+  if(filtroGraficoAgente) filtrosAtivosTxt.push('Colaboradora: ' + filtroGraficoAgente);
+  if(prazoFiltroExtra) filtrosAtivosTxt.push('Prazo: ' + prazoFiltroExtra);
+
+  let pagHtml = filtrosAtivosTxt.length ? `<span style="color:var(--ca);font-weight:700;margin-right:auto">Filtro ativo: ${filtrosAtivosTxt.join(' | ')} <a href="#" onclick="limparFiltrosGraficos();renderS4();return false" style="margin-left:8px;color:var(--cr)">[Remover]</a></span>` : '';
+  pagHtml += `<span class="pag-info">${start + 1}–${Math.min(start + perPageS4, total)} de ${fmt(total)}</span>`;
+  pagHtml += `<button onclick="mudarPaginaS4(${pageS4 - 1})" ${pageS4 === 1 ? 'disabled' : ''}>‹ Anterior</button>`;
+  pagHtml += `<button onclick="mudarPaginaS4(${pageS4 + 1})" ${pageS4 >= maxPages ? 'disabled' : ''}>Próxima ›</button>`;
+  document.getElementById('pagCasos').innerHTML = pagHtml;
+}
+
+function mudarPaginaS4(p) { pageS4 = p; renderS4(); }
+
+function exportarCSV() {
+  const cols = ['ID','Criação','Transferido Cred','Solicitante','Atribuído Display','UF','Status Tratado','Tipo','Demanda','Risco NIP','Prazo'];
+  const csv = [cols.join(';'), ...filtered.map(r => cols.map(c => '"' + String(r[c]??'').replace(/"/g,'""') + '"').join(';'))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'Tabela_de_Casos_MedSenior.csv';
+  a.click();
+}
+
+function exportarVisaoGeralCSV() {
+  let lines = [];
+  lines.push('=== RELATORIO CONSOLIDADO - VISAO GERAL (MEDSENIOR) ===');
+  lines.push('');
+  const total = filtered.length;
+  const abertos = filtered.filter(r=>r['Status Tratado']==='ABERTO').length;
+  const pend = filtered.filter(r=>r['Status Tratado']==='PENDENTE - CLIENTE').length;
+  const resolv = filtered.filter(r=>r['Status Tratado']==='FECHADO').length;
+  const dentroP = filtered.filter(r=>r.Prazo==='DENTRO DO PRAZO').length;
+  const foraP = filtered.filter(r=>r.Prazo==='FORA DO PRAZO').length;
+  const nip = filtered.filter(r=>r['Risco NIP']==='SIM').length;
+  const urg = filtered.filter(r=>r.Urgenciado==='SIM').length;
+
+  lines.push('--- INDICADORES GERAIS (KPIs) ---');
+  lines.push(`Total de Tickets;${total}`);
+  lines.push(`Total Abertos;${abertos}`);
+  lines.push(`Pendente Cliente;${pend}`);
+  lines.push(`Resolvidos;${resolv}`);
+  lines.push(`Dentro do Prazo;${dentroP}`);
+  lines.push(`Fora do Prazo;${foraP}`);
+  lines.push(`Risco NIP;${nip}`);
+  lines.push(`Urgenciados;${urg}`);
+  lines.push('');
+
+  lines.push('--- TICKETS POR STATUS ---');
+  lines.push('Status;Quantidade');
+  ['ABERTO','FECHADO','PENDENTE - CLIENTE'].forEach(st => {
+    const qtd = filtered.filter(r=>r['Status Tratado']===st).length;
+    lines.push(`${st};${qtd}`);
+  });
+  lines.push('');
+
+  lines.push('--- TIPO DE SOLICITACAO ---');
+  lines.push('Tipo;Quantidade');
+  ['CONSULTA','EXAME','SEM DEFINIÇÃO'].forEach(tp => {
+    const qtd = filtered.filter(r=>r.Tipo===tp).length;
+    lines.push(`${tp};${qtd}`);
+  });
+  lines.push('');
+
+  lines.push('--- MOTIVO DO DIRECIONAMENTO ---');
+  lines.push('Motivo;Quantidade');
+  const motCount = {};
+  filtered.forEach(r => motCount[r.Motivo] = (motCount[r.Motivo]||0) + 1);
+  Object.entries(motCount).sort((a,b)=>b[1]-a[1]).forEach(([mot, qtd]) => {
+    lines.push(`"${mot}";${qtd}`);
+  });
+
+  const csvContent = lines.join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'Relatorio_Consolidado_VisaoGeral_MedSenior.csv';
+  a.click();
+}
+
+function renderS5() {
+  const nipData = filtered.filter(r => r['Risco NIP'] === 'SIM');
+  let nipNoPrazo = 0, nipForaPrazo = 0;
+  nipData.forEach(r => { if(r.Prazo === 'DENTRO DO PRAZO') nipNoPrazo++; else nipForaPrazo++; });
+  mkChart('cRiscoNIP', {
+    type: 'bar',
+    data: { labels: ['No Prazo', 'Fora do Prazo'], datasets: [{ label: 'Tickets', data: [nipNoPrazo, nipForaPrazo], backgroundColor: ['#059669', '#C0392B'], borderRadius: 4 }] },
+    options: {
+      plugins: { legend: { display: false } }, responsive: true, scales: { y: { beginAtZero: true, grace: '15%' } },
+      onClick: (e, el) => { if(el.length) { prazoFiltroExtra = el[0].index === 0 ? 'DENTRO DO PRAZO' : 'FORA DO PRAZO'; goScreen('s4'); } }
+    }
+  });
+
+  const urgData = filtered.filter(r => r.Urgenciado === 'SIM');
+  let urgNoPrazo = 0, urgForaPrazo = 0;
+  urgData.forEach(r => { if(r.Prazo === 'DENTRO DO PRAZO') urgNoPrazo++; else urgForaPrazo++; });
+  mkChart('cUrgenciados', {
+    type: 'bar',
+    data: { labels: ['No Prazo', 'Fora do Prazo'], datasets: [{ label: 'Tickets', data: [urgNoPrazo, urgForaPrazo], backgroundColor: ['#327746', '#C0392B'], borderRadius: 4 }] },
+    options: {
+      plugins: { legend: { display: false } }, responsive: true, scales: { y: { beginAtZero: true, grace: '15%' } },
+      onClick: (e, el) => { if(el.length) { prazoFiltroExtra = el[0].index === 0 ? 'DENTRO DO PRAZO' : 'FORA DO PRAZO'; goScreen('s4'); } }
+    }
+  });
+
+  const geraisData = filtered.filter(r => r['Risco NIP'] !== 'SIM' && r.Urgenciado !== 'SIM');
+  let geraisNoPrazo = 0, geraisForaPrazo = 0;
+  geraisData.forEach(r => { if(r.Prazo === 'DENTRO DO PRAZO') geraisNoPrazo++; else geraisForaPrazo++; });
+  mkChart('cDemandasGerais', {
+    type: 'bar',
+    data: { labels: ['No Prazo', 'Fora do Prazo'], datasets: [{ label: 'Tickets', data: [geraisNoPrazo, geraisForaPrazo], backgroundColor: ['#2563EB', '#E69732'], borderRadius: 4 }] },
+    options: {
+      plugins: { legend: { display: false } }, responsive: true, scales: { y: { beginAtZero: true, grace: '15%' } },
+      onClick: (e, el) => { if(el.length) { prazoFiltroExtra = el[0].index === 0 ? 'DENTRO DO PRAZO' : 'FORA DO PRAZO'; goScreen('s4'); } }
+    }
+  });
+
+  const countBen = {};
+  filtered.forEach(r => { const nome = r.Solicitante; if(nome && nome !== 'Não Informado') countBen[nome] = (countBen[nome]||0) + 1; });
+  const reincidentes = Object.entries(countBen).filter(([, qtd]) => qtd > 1).sort((a,b) => b[1] - a[1]);
+  document.getElementById('tblReincidencia').querySelector('tbody').innerHTML = reincidentes.length === 0 ? 
+    '<tr><td colspan="2" style="text-align:center;color:var(--gray)">Nenhum beneficiário repetido encontrado.</td></tr>' :
+    reincidentes.map(([nome, qtd]) => `<tr><td><strong>${nome}</strong></td><td><span class="dga">${fmt(qtd)} tickets</span></td></tr>`).join('');
+}
+
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.sb-nav button').forEach((b,i)=>{
+    b.classList.toggle('active',['s1','s2','s3','s4','s5','s6'][i]===id);
+  });
+  try { renderScreenCharts(); } catch(e) {}
+}
+
+function reabrirUpload() {
+  uploadState = { ticketsOk: false, ticketsData: null };
+  document.getElementById('inpTickets').value = '';
+  setCardStatus('cardTickets','stTickets','wait','A aguardar seleção');
+  document.getElementById('btnIniciar').disabled = true;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('screenUpload').style.display = 'flex';
+}
+</script>
+</body>
+</html>
